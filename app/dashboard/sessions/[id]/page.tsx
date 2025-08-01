@@ -256,9 +256,6 @@ export default function SessionDetailPage() {
               <div className="mt-1">
                 <div className="flex items-center">
                   <span className="text-lg font-medium">{Math.min(session.progressPercentage || 0, 100)}%</span>
-                  <span className="text-sm text-gray-500 ml-2">
-                    (Depth {session.stats?.currentDepth || 0} / {session.config?.maxDepth || 0})
-                  </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div 
