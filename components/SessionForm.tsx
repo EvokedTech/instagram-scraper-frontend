@@ -91,11 +91,17 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
       }, 10000)
     } catch (error: any) {
       console.error('Error creating session:', error)
+      console.error('Error response structure:', error.response?.data)
       
       // Extract error message from the response
       let errorMessage = 'Failed to create session'
       if (error.response?.data?.error) {
-        errorMessage = error.response.data.error
+        // Handle nested error object structure from backend
+        if (typeof error.response.data.error === 'object' && error.response.data.error.message) {
+          errorMessage = error.response.data.error.message
+        } else if (typeof error.response.data.error === 'string') {
+          errorMessage = error.response.data.error
+        }
       } else if (error.response?.data?.details) {
         errorMessage = error.response.data.details.join('\n')
       } else if (error.message) {
