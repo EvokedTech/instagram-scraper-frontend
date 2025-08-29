@@ -249,18 +249,31 @@ export default function SessionCard({ session: initialSession }: SessionCardProp
           <p className="font-medium text-gray-900">{session.rootProfiles?.length || 0}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-500 mb-1">Max Depth</p>
-          <p className="font-medium text-gray-900">{session.config?.maxDepth || 0}</p>
+          <p className="text-xs text-gray-500 mb-1">Batch Size</p>
+          <p className="font-medium text-gray-900">10</p>
         </div>
         <div>
           <p className="text-xs text-gray-500 mb-1">Progress</p>
           <p className="font-medium text-gray-900">{session.stats?.scrapedProfiles || 0}/{session.stats?.totalProfiles || 0}</p>
         </div>
         <div>
-          <p className="text-xs text-gray-500 mb-1">Current Depth</p>
-          <p className="font-medium text-gray-900">{session.stats?.currentDepth || 0}</p>
+          <p className="text-xs text-gray-500 mb-1">Current Batch</p>
+          <p className="font-medium text-gray-900">{Math.ceil((session.stats?.scrapedProfiles || 1) / 10)}/{Math.ceil((session.stats?.totalProfiles || 1) / 10)}</p>
         </div>
       </div>
+      
+      {/* Batch Processing Info */}
+      {session.status === 'active' && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="font-medium text-blue-900">Batch Processing Active</span>
+          </div>
+          <p className="text-blue-700 text-xs">
+            Processing profiles in batches of 10 with 30s delay between batches
+          </p>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="mb-4">

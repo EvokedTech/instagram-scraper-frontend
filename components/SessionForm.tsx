@@ -25,14 +25,16 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
   })
   
   const [unlimitedProfiles, setUnlimitedProfiles] = useState(false)
+  const [analyzeRootProfiles, setAnalyzeRootProfiles] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      // Split by newlines, spaces, or both
       const profileUrls = formData.rootProfiles
-        .split('\n')
+        .split(/[\n\s]+/)
         .map(url => url.trim())
         .filter(url => url.length > 0)
 
@@ -44,34 +46,52 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
           maxDepth: formData.maxDepth,
           maxProfilesPerDepth: unlimitedProfiles ? null : formData.maxProfilesPerDepth,
           analysisEnabled: false,
+          analyzeRootProfiles: analyzeRootProfiles,
+          skipPrivacyCheck: true,  // Skip privacy check for faster processing
         },
       }
 
       const result = await sessionAPI.create(sessionData)
+      
+      // Calculate batch information
+      const totalProfiles = profileUrls.length
+      const batchSize = 10
+      const totalBatches = Math.ceil(totalProfiles / batchSize)
+      const estimatedTime = Math.round((totalProfiles * 30 + totalBatches * 30) / 60) // rough estimate in minutes
       
       // Check if any profiles already exist in database
       if (result.profilesInfo && result.profilesInfo.existing > 0) {
         setNotification({
           show: true,
           type: 'info',
-          message: `Found ${result.profilesInfo.existing} existing profile(s) in database!`,
-          details: result.profilesInfo
+          message: `Session created! Found ${result.profilesInfo.existing} existing profile(s). Processing ${totalProfiles} profiles in ${totalBatches} batch(es) of ${batchSize}.`,
+          details: {
+            ...result.profilesInfo,
+            batchInfo: {
+              totalBatches,
+              batchSize,
+              estimatedMinutes: estimatedTime
+            }
+          }
         })
       } else {
         setNotification({
           show: true,
           type: 'success',
-          message: 'Session created successfully. All profiles are new.',
-          details: result.profilesInfo
+          message: `Session created! Processing ${totalProfiles} profiles in ${totalBatches} batch(es) of ${batchSize}. Estimated time: ~${estimatedTime} minutes.`,
+          details: {
+            ...result.profilesInfo,
+            batchInfo: {
+              totalBatches,
+              batchSize,
+              estimatedMinutes: estimatedTime
+            }
+          }
         })
       }
       
-      // Get session ID from the response
-      const sessionId = result.data?._id || result.data?.id || result._id || result.id
-      
-      if (sessionId) {
-        await scraperAPI.startBatch(sessionId)
-      }
+      // Batch processing starts automatically on the backend, no need to manually start it
+      // The backend's createSession method already calls batchScrapingService.processSessionInBatches()
 
       // Reset form
       setFormData({
@@ -82,6 +102,7 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
         maxProfilesPerDepth: 100,
       })
       setUnlimitedProfiles(false)
+      setAnalyzeRootProfiles(false)
 
       onSessionCreated()
       
@@ -236,6 +257,27 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
           <p className="text-xs text-gray-500 mt-1">
             Enter one profile URL per line
           </p>
+          {/* Batch Processing Info */}
+          {formData.rootProfiles && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900">Batch Processing Enabled</p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    {formData.rootProfiles.split(/[\n\s]+/).filter(url => url.trim().length > 0).length} profiles will be processed in batches of 10
+                  </p>
+                  <p className="text-blue-600 text-xs mt-1">
+                    • 10 second delay between profiles<br/>
+                    • 30 second delay between batches<br/>
+                    • Prevents Apify overload
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -289,6 +331,22 @@ export default function SessionForm({ onSessionCreated }: SessionFormProps) {
                 : 'Max profiles at each level'}
             </p>
           </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <label className="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              checked={analyzeRootProfiles}
+              onChange={(e) => setAnalyzeRootProfiles(e.target.checked)}
+              className="rounded border-gray-300 text-black focus:ring-black"
+            />
+            <span className="font-medium">Analyze Root Profiles</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            Enable this to analyze root profiles from the initial Instagram URLs you provide. 
+            Analysis results will be saved to the analyzed_relatedprofiles collection.
+          </p>
         </div>
 
         <button
