@@ -2,7 +2,7 @@
 
 Modern Next.js frontend for the Instagram Scraper System.
 
-## Tech Stack
+## Tech Stack    
 
 - **Framework**: Next.js 14 with App Router
 - **Language**: TypeScript
